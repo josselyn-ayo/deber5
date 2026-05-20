@@ -16,15 +16,17 @@ interface InputProps {
   error?:          string;
   autoCapitalize?: "none" | "sentences" | "words";
   rightAccessory?: ReactNode;
+  inputStyle?: any;
+  wrapperStyle?: any;
 }
  
 export const Input = ({
   label, value, onChangeText, placeholder,
   secureTextEntry, keyboardType = "default", error,
   autoCapitalize = "none",
-  rightAccessory,
+  rightAccessory, inputStyle, wrapperStyle,
 }: InputProps) => (
-  <View style={styles.wrapper}>
+  <View style={[styles.wrapper, wrapperStyle]}>
     {label ? <Text style={styles.label}>{label}</Text> : null}
     <View style={[styles.inputRow, error ? styles.inputError : null]}>
       <TextInput
@@ -36,7 +38,7 @@ export const Input = ({
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
-        style={[styles.input, rightAccessory ? styles.inputWithAccessory : null]}
+        style={[styles.input, rightAccessory ? styles.inputWithAccessory : null, inputStyle]}
       />
       {rightAccessory ? <View style={styles.accessory}>{rightAccessory}</View> : null}
     </View>
@@ -48,8 +50,8 @@ const styles = StyleSheet.create({
   wrapper:          { gap:6 },
   label:            { fontSize:14, fontWeight:"500", color:"#334155" },
   inputRow:         { flexDirection:"row", alignItems:"center", borderWidth:1.5,
-                      borderColor:"#CBD5E1", borderRadius:10, backgroundColor:"#F8FAFC" },
-  input:            { flex:1, paddingHorizontal:16, paddingVertical:13, fontSize:15,
+                      borderColor:"#E6EEF7", borderRadius:12, backgroundColor:"#FFFFFF" },
+  input:            { flex:1, paddingHorizontal:18, paddingVertical:14, fontSize:16,
                       color:"#0F172A" },
   inputWithAccessory: { paddingRight:8 },
   accessory:        { paddingRight:14 },
