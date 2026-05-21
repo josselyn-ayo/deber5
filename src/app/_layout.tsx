@@ -29,6 +29,9 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="home" />
+            <Stack.Screen name="history" />
+            <Stack.Screen name="comprobantes" />
+            <Stack.Screen name="profile-security" />
             <Stack.Screen name="index" />
           </Stack>
           <AuthGuard />

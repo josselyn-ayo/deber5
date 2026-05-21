@@ -1,84 +1,32 @@
-import type {
-    TransactionCategory,
-    TransactionInput,
-    TransactionRecord,
-    TransactionType,
-} from "@/entities/finance/model/types";
+import type { TransactionCategory } from "@/entities/finance/model/types";
 import { useFinance } from "@/features/finance/model/useFinance";
 import { useSession } from "@/features/session/model/useSession";
-import { Input } from "@/shared/ui/Input";
 import { LottieIllustration } from "@/shared/ui/LottieIllustration";
-import { useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import {
-    Button,
-    Card,
-    Paragraph,
-    Separator,
-    Text,
-    XStack,
-    YStack
-} from "tamagui";
-
-const categories: { label: string; value: TransactionCategory | "all" }[] = [
-  { label: "Todas", value: "all" },
-  { label: "Alimentación", value: "alimentacion" },
-  { label: "Transporte", value: "transporte" },
-  { label: "Servicios", value: "servicios" },
-  { label: "Educación", value: "educacion" },
-  { label: "Salario", value: "salario" },
-  { label: "Otros", value: "otros" },
-];
-
-const types: { label: string; value: TransactionType | "all" }[] = [
-  { label: "Todos", value: "all" },
-  { label: "Ingreso", value: "income" },
-  { label: "Gasto", value: "expense" },
-];
-
-const typeLabels: Record<TransactionType, string> = {
-  income: "Ingreso",
-  expense: "Gasto",
-};
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useMemo } from "react";
+import { Pressable, ScrollView } from "react-native";
+import { Card, Paragraph, Text, XStack, YStack } from "tamagui";
 
 const categoryLabels: Record<TransactionCategory, string> = {
-  alimentacion: "Alimentación",
+  alimentacion: "Comida",
   transporte: "Transporte",
-  servicios: "Servicios",
-  educacion: "Educación",
-  salario: "Salario",
+  servicios: "Hogar",
+  educacion: "Salud",
+  salario: "Ingresos",
   otros: "Otros",
 };
 
-const pillButtonProps = {
-  minHeight: 38,
-  px: "$4",
-  py: "$2",
-  br: 24,
-  fontSize: 14,
-  fontWeight: "700" as const,
-  lineHeight: 18,
+const categoryIcons: Record<TransactionCategory, keyof typeof MaterialCommunityIcons.glyphMap> = {
+  alimentacion: "silverware-fork-knife",
+  transporte: "car-electric",
+  servicios: "home-lightning-bolt",
+  educacion: "medical-bag",
+  salario: "cash-multiple",
+  otros: "dots-horizontal-circle-outline",
 };
 
-const primaryButtonProps = {
-  minHeight: 48,
-  px: "$5",
-  py: "$3",
-  br: 24,
-  fontSize: 16,
-  fontWeight: "700" as const,
-  lineHeight: 20,
-};
-
-const initialDate = () => new Date().toISOString().slice(0, 10);
-
-const initialFormState = (): TransactionInput => ({
-  description: "",
-  amount: 0,
-  category: "alimentacion",
-  type: "expense",
-  transaction_date: initialDate(),
-});
+const weekdayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 
 const money = (value: number) =>
   new Intl.NumberFormat("es-EC", {
@@ -87,572 +35,367 @@ const money = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value);
 
-const formatDate = (value: string) => {
-  const date = new Date(`${value}T00:00:00`);
-  return new Intl.DateTimeFormat("es-EC", {
+const formatDate = (value: string) =>
+  new Intl.DateTimeFormat("es-EC", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(date);
+  }).format(new Date(`${value}T00:00:00`));
+
+const quickButton = {
+  minHeight: 42,
+  px: "$4",
+  py: "$2",
+  br: 9999,
+  fontSize: 14,
+  fontWeight: "700" as const,
 };
 
-interface FormState extends TransactionInput {
-  amountText: string;
-}
+const QuickAction = ({
+  title,
+  subtitle,
+  icon,
+  bg,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  bg: string;
+  onPress: () => void;
+}) => (
+  <Pressable onPress={onPress} style={{ flex: 1, minWidth: 150 }}>
+    <Card bg={bg} borderColor="rgba(255,255,255,0.5)" borderWidth={1} px="$4" py="$4" br="$5">
+      <YStack gap="$3">
+        <YStack w={42} h={42} br={16} bg="rgba(255,255,255,0.22)" ai="center" jc="center">
+          <Ionicons name={icon} size={22} color="white" />
+        </YStack>
+        <YStack gap="$1">
+          <Text color="white" fontSize={16} fontWeight="800">
+            {title}
+          </Text>
+          <Paragraph color="rgba(255,255,255,0.85)" size="$2">
+            {subtitle}
+          </Paragraph>
+        </YStack>
+      </YStack>
+    </Card>
+  </Pressable>
+);
 
-const createFormState = (): FormState => {
-  const base = initialFormState();
-  return {
-    ...base,
-    amountText: "",
-  };
-};
-
-const transactionToForm = (transaction: TransactionRecord): FormState => ({
-  description: transaction.description,
-  amount: transaction.amount,
-  amountText: String(transaction.amount),
-  category: transaction.category,
-  type: transaction.type,
-  transaction_date: transaction.transaction_date,
-});
+const StatCard = ({ title, value, bg }: { title: string; value: string; bg: string }) => (
+  <Card f={1} minWidth={104} bg={bg} borderColor="rgba(255,255,255,0.65)" borderWidth={1} p="$3" br="$5">
+    <Paragraph color="rgba(255,255,255,0.8)" size="$2">
+      {title}
+    </Paragraph>
+    <Text color="white" fontSize="$7" fontWeight="800">
+      {value}
+    </Text>
+  </Card>
+);
 
 export const HomePage = () => {
   const { user, signOut } = useSession();
-  const [form, setForm] = useState<FormState>(createFormState);
-  const [editingTransaction, setEditingTransaction] = useState<TransactionRecord | null>(null);
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<TransactionCategory | "all">("all");
-  const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [feedback, setFeedback] = useState<string | null>(null);
-
-  const { transactions, isTransactionsLoading, createTransaction, updateTransaction, deleteTransaction, changePassword } =
-    useFinance(user?.id, {
-      search,
-      category: categoryFilter,
-      type: typeFilter,
-    });
+  const { transactions } = useFinance(user?.id, { search: "", category: "all", type: "all" });
+  const displayName = user?.user_metadata?.full_name?.trim() || user?.email?.split("@")[0] || "";
 
   const summary = useMemo(() => {
-    const income = transactions
-      .filter((transaction) => transaction.type === "income")
-      .reduce((accumulator, transaction) => accumulator + transaction.amount, 0);
-    const expense = transactions
-      .filter((transaction) => transaction.type === "expense")
-      .reduce((accumulator, transaction) => accumulator + transaction.amount, 0);
-
-    return {
-      income,
-      expense,
-      balance: income - expense,
-    };
+    const income = transactions.filter((transaction) => transaction.type === "income").reduce((total, transaction) => total + transaction.amount, 0);
+    const expense = transactions.filter((transaction) => transaction.type === "expense").reduce((total, transaction) => total + transaction.amount, 0);
+    return { income, expense, balance: income - expense };
   }, [transactions]);
 
-  const resetTransactionForm = () => {
-    setForm(createFormState());
-    setEditingTransaction(null);
-  };
+  const savingsRate = useMemo(() => {
+    if (summary.income <= 0) return 0;
+    return Math.max(0, Math.min(100, Math.round((summary.balance / summary.income) * 100)));
+  }, [summary.balance, summary.income]);
 
-  const validateTransactionForm = () => {
-    if (!form.description.trim()) {
-      Alert.alert("Campo requerido", "Agrega una descripción.");
-      return false;
-    }
+  const recentTransactions = [...transactions].slice(0, 3);
 
-    if (!form.amountText || Number.isNaN(Number(form.amountText)) || Number(form.amountText) <= 0) {
-      Alert.alert("Monto inválido", "Ingresa un monto mayor a cero.");
-      return false;
-    }
+  const weeklyBars = useMemo(() => {
+    const today = new Date();
+    const currentDay = today.getDay() || 7;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - currentDay + 1);
+    monday.setHours(0, 0, 0, 0);
 
-    if (!form.transaction_date.trim()) {
-      Alert.alert("Campo requerido", "Selecciona una fecha.");
-      return false;
-    }
+    const dailyTotals = weekdayLabels.map((_, index) => {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + index);
+      const dateKey = day.toISOString().slice(0, 10);
+      const total = transactions
+        .filter((transaction) => transaction.transaction_date === dateKey)
+        .reduce((accumulator, transaction) => accumulator + Math.abs(transaction.amount), 0);
 
-    return true;
-  };
+      return {
+        label: weekdayLabels[index],
+        value: total,
+      };
+    });
 
-  const submitTransaction = async () => {
-    if (!validateTransactionForm()) return;
+    const maxValue = Math.max(...dailyTotals.map((item) => item.value), 1);
 
-    const payload: TransactionInput = {
-      description: form.description.trim(),
-      amount: Number(form.amountText),
-      category: form.category,
-      type: form.type,
-      transaction_date: form.transaction_date,
-    };
-
-    try {
-      if (editingTransaction) {
-        await updateTransaction.mutateAsync({
-          transactionId: editingTransaction.id,
-          input: payload,
-        });
-      } else {
-        await createTransaction.mutateAsync(payload);
-      }
-
-      setFeedback(editingTransaction ? "Transacción actualizada con éxito." : "Transacción registrada con éxito.");
-      setTimeout(() => setFeedback(null), 1800);
-      resetTransactionForm();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo guardar la transacción.";
-      Alert.alert("Error", message);
-    }
-  };
-
-  const handleEdit = (transaction: TransactionRecord) => {
-    setEditingTransaction(transaction);
-    setForm(transactionToForm(transaction));
-  };
-
-  const handleDelete = (transaction: TransactionRecord) => {
-    Alert.alert(
-      "Eliminar transacción",
-      `¿Quieres eliminar "${transaction.description}"? Esta acción no se puede deshacer.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteTransaction.mutateAsync(transaction.id);
-              if (editingTransaction?.id === transaction.id) {
-                resetTransactionForm();
-              }
-            } catch (error) {
-              const message = error instanceof Error ? error.message : "No se pudo eliminar la transacción.";
-              Alert.alert("Error", message);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const validatePasswordForm = () => {
-    if (!password || !passwordConfirm) {
-      Alert.alert("Campo requerido", "Completa la nueva contraseña y su confirmación.");
-      return false;
-    }
-
-    if (password.length < 8) {
-      Alert.alert("Contraseña débil", "La nueva contraseña debe tener al menos 8 caracteres.");
-      return false;
-    }
-
-    if (password !== passwordConfirm) {
-      Alert.alert("Error", "Las contraseñas no coinciden.");
-      return false;
-    }
-
-    return true;
-  };
-
-  const submitPasswordChange = async () => {
-    if (!validatePasswordForm()) return;
-
-    try {
-      await changePassword.mutateAsync(password);
-      setPassword("");
-      setPasswordConfirm("");
-      Alert.alert("Listo", "Tu contraseña fue actualizada correctamente.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "No se pudo actualizar la contraseña.";
-      Alert.alert("Error", message);
-    }
-  };
-
-  const renderTransaction = ({ item }: { item: TransactionRecord }) => {
-    const isIncome = item.type === "income";
-
-    return (
-      <Card
-        bg="$cardBackground"
-        borderColor="$borderColor"
-        borderWidth={1}
-        shadowColor="#0F172A"
-        shadowOpacity={0.06}
-        shadowRadius={16}
-        shadowOffset={{ width: 0, height: 8 }}
-        elevation={3}
-        p="$4"
-        mb="$3"
-        br="$5"
-      >
-        <XStack jc="space-between" ai="center" gap="$3">
-          <YStack f={1} gap="$2">
-            <XStack ai="center" gap="$2">
-              <YStack
-                w={12}
-                h={12}
-                br={9999}
-                bg={isIncome ? "#DCFCE7" : "#FEE2E2"}
-              />
-              <Text fontSize="$5" fontWeight="700" color="$color">
-                {item.description}
-              </Text>
-            </XStack>
-            <Paragraph color="$mutedColor" size="$2">
-              {categoryLabels[item.category]} · {formatDate(item.transaction_date)}
-            </Paragraph>
-          </YStack>
-
-          <YStack ai="flex-end" gap="$2">
-            <Text fontSize="$5" fontWeight="800" color={isIncome ? "#15803D" : "#B91C1C"}>
-              {isIncome ? "+" : "-"}{money(item.amount)}
-            </Text>
-            <Text fontSize="$2" color="$mutedColor">
-              {typeLabels[item.type]}
-            </Text>
-          </YStack>
-        </XStack>
-
-        <Separator my="$3" borderColor="$borderColor" />
-
-        <XStack gap="$2" flexWrap="wrap">
-          <Button
-            {...pillButtonProps}
-            bg="$surfaceMuted"
-            color="$slate11"
-            onPress={() => handleEdit(item)}
-          >
-            Editar
-          </Button>
-          <Button
-            {...pillButtonProps}
-            bg="#FEE2E2"
-            color="$rose10"
-            onPress={() => handleDelete(item)}
-          >
-            Eliminar
-          </Button>
-        </XStack>
-      </Card>
-    );
-  };
+    return dailyTotals.map((item) => ({
+      label: item.label,
+      height: Math.max(16, Math.round((item.value / maxValue) * 92)),
+      active: item.value > 0,
+    }));
+  }, [transactions]);
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#F3F6FC" }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
-        <Card
-          bg="$cardBackground"
-          borderColor="$borderColor"
-          borderWidth={1}
-          shadowColor="#0F172A"
-          shadowOpacity={0.06}
-          shadowRadius={16}
-          shadowOffset={{ width: 0, height: 8 }}
-          elevation={3}
-          overflow="hidden"
-        >
-          <YStack bg="$primary" p="$6" gap="$3" ai="center">
-            <LottieIllustration variant="hero" size={148} />
-            <YStack ai="center" gap="$1">
-              <Text color="white" fontSize="$7" fontWeight="800">
-                Finanzas Inteligentes
-              </Text>
-              <Paragraph color="#DDE8FF" size="$3" ta="center">
-                Controla ingresos, gastos y seguridad desde un solo panel.
-              </Paragraph>
-            </YStack>
-          </YStack>
+    <YStack f={1} bg="#FCF9F8">
+      <YStack position="absolute" top={0} left={0} right={0} h={360} bg="#F8FBFF" />
+      <YStack position="absolute" top={-120} right={-80} w={260} h={260} br={130} bg="#DFF3EA" opacity={0.8} />
+      <YStack position="absolute" top={180} left={-90} w={180} h={180} br={90} bg="#FCE7EA" opacity={0.5} />
 
-          <YStack p="$4" gap="$4">
-            <XStack flexWrap="wrap" gap="$3">
-              <Card f={1} minWidth={120} bg="#ECFDF5" borderColor="#A7F3D0" borderWidth={1} p="$3" br="$5">
-                <Paragraph color="#166534" size="$2">
-                  Ingresos
-                </Paragraph>
-                <Text fontSize="$6" fontWeight="800" color="#15803D">
-                  {money(summary.income)}
-                </Text>
-              </Card>
-              <Card f={1} minWidth={120} bg="#FFF1F2" borderColor="#FDA4AF" borderWidth={1} p="$3" br="$5">
-                <Paragraph color="#991B1B" size="$2">
-                  Gastos
-                </Paragraph>
-                <Text fontSize="$6" fontWeight="800" color="#B91C1C">
-                  {money(summary.expense)}
-                </Text>
-              </Card>
-              <Card f={1} minWidth={120} bg="$soft" borderColor="$borderColor" borderWidth={1} p="$3" br="$5">
-                <Paragraph color="$mutedColor" size="$2">
-                  Balance
-                </Paragraph>
-                <Text fontSize="$6" fontWeight="800" color="$color">
-                  {money(summary.balance)}
-                </Text>
-              </Card>
-            </XStack>
-
-            <YStack gap="$2">
-              <Text fontSize="$4" fontWeight="700" color="$color">
-                Usuario
-              </Text>
-              <Paragraph color="$mutedColor">{user?.email}</Paragraph>
-            </YStack>
-          </YStack>
-        </Card>
-
-        <Card
-          bg="$cardBackground"
-          borderColor="$borderColor"
-          borderWidth={1}
-          shadowColor="#0F172A"
-          shadowOpacity={0.06}
-          shadowRadius={16}
-          shadowOffset={{ width: 0, height: 8 }}
-          elevation={3}
-          p="$4"
-        >
-          <YStack gap="$4">
-            <XStack jc="space-between" ai="center">
-              <Text fontSize="$6" fontWeight="800">
-                {editingTransaction ? "Editar transacción" : "Nueva transacción"}
-              </Text>
-              {editingTransaction ? (
-                <Button chromeless px="$0" py="$0" fontSize={14} fontWeight="700" color="$secondary" onPress={resetTransactionForm}>
-                  Cancelar edición
-                </Button>
-              ) : null}
-            </XStack>
-
-            {feedback ? (
-              <Card bg="#ECFDF5" p="$3" borderColor="$success" borderWidth={1}>
-                <XStack ai="center" gap="$3">
-                  <LottieIllustration variant="success" size={58} loop={false} />
-                  <Paragraph color="#065F46" fontWeight="700" f={1}>
-                    {feedback}
-                  </Paragraph>
+      <ScrollView contentContainerStyle={{ paddingBottom: 140, paddingTop: 20 }} showsVerticalScrollIndicator={false}>
+        <YStack gap="$5" px="$4" maxWidth={760} width="100%" alignSelf="center">
+          <Card bg="rgba(255,255,255,0.86)" borderColor="#D8E0EC" borderWidth={1} shadowColor="#0F172A" shadowOpacity={0.06} shadowRadius={18} shadowOffset={{ width: 0, height: 8 }} elevation={3} overflow="hidden">
+            <YStack px="$4" pt="$4" pb="$4" gap="$4" ai="center">
+              <XStack ai="center" jc="space-between" w="100%">
+                <XStack ai="center" gap="$3" f={1}>
+                  <YStack w={44} h={44} br={22} bg="#A3F69C" ai="center" jc="center" borderWidth={2} borderColor="#1B6D24">
+                    <MaterialCommunityIcons name="leaf" size={22} color="#1B6D24" />
+                  </YStack>
+                  <YStack f={1}>
+                    <Text fontSize={22} fontWeight="900" color="#1B6D24">
+                      EcoFinance
+                    </Text>
+                    <Paragraph color="#5C667A" size="$2">
+                      Panel principal
+                    </Paragraph>
+                  </YStack>
                 </XStack>
-              </Card>
-            ) : null}
 
-            <YStack gap="$3">
-              <Input
-                label="Descripción"
-                value={form.description}
-                onChangeText={(value) => setForm((current) => ({ ...current, description: value }))}
-                placeholder="Ej. Supermercado"
-              />
+                <Pressable onPress={() => router.push("/profile-security")}>
+                  <YStack w={44} h={44} br={22} bg="#EEF4FF" ai="center" jc="center">
+                    <Ionicons name="person-outline" size={22} color="#004D99" />
+                  </YStack>
+                </Pressable>
+              </XStack>
 
-              <XStack gap="$3" flexWrap="wrap">
-                <YStack f={1} minWidth={140}>
-                  <Input
-                    label="Monto"
-                    value={form.amountText}
-                    onChangeText={(value) => setForm((current) => ({ ...current, amountText: value }))}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                  />
+              <YStack gap="$3" ai="center">
+                <LottieIllustration variant="hero" size={132} />
+                <YStack ai="center" gap="$1">
+                  <Text fontSize="$7" fontWeight="900" color="#1C1B1B" textAlign="center">
+                    {displayName ? `Hola, ${displayName}` : "Hola"}
+                  </Text>
+                  <Paragraph color="#5C667A" size="$3" textAlign="center">
+                    Lleva ingresos, gastos, historial y seguridad en un mismo lugar.
+                  </Paragraph>
                 </YStack>
+                <XStack ai="center" gap="$2" flexWrap="wrap" jc="center">
+                  <Card bg="#004D99" px="$3" py="$2" br={9999}>
+                    <Text color="white" fontSize={12} fontWeight="800">
+                      Score: 850
+                    </Text>
+                  </Card>
+                </XStack>
+              </YStack>
+            </YStack>
+          </Card>
 
-                <YStack f={1} minWidth={140}>
-                  <Input
-                    label="Fecha"
-                    value={form.transaction_date}
-                    onChangeText={(value) => setForm((current) => ({ ...current, transaction_date: value }))}
-                    placeholder="YYYY-MM-DD"
-                  />
+          <XStack gap="$3" flexWrap="wrap">
+            <QuickAction title="Transacciones" subtitle="Ir al historial" icon="swap-horizontal-outline" bg="#004D99" onPress={() => router.push("/history")} />
+            <QuickAction title="Historial" subtitle="Ver movimientos guardados" icon="time-outline" bg="#1B6D24" onPress={() => router.push("/history")} />
+          </XStack>
+
+          <Card bg="$cardBackground" borderColor="$borderColor" borderWidth={1} shadowColor="#0F172A" shadowOpacity={0.08} shadowRadius={20} shadowOffset={{ width: 0, height: 10 }} elevation={4} p="$4">
+            <YStack gap="$4">
+              <XStack ai="center" jc="space-between">
+                <YStack>
+                  <Text fontSize="$6" fontWeight="900" color="$slate11">
+                    Resumen financiero
+                  </Text>
+                  <Paragraph color="$mutedColor" size="$2">
+                    Vista rápida del flujo de caja.
+                  </Paragraph>
                 </YStack>
               </XStack>
 
-              <YStack gap="$2">
-                <Text color="$mutedColor">Categoría</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <XStack gap="$2">
-                    {categories
-                      .filter((item) => item.value !== "all")
-                      .map((item) => (
-                        <Button
-                          key={item.value}
-                            {...pillButtonProps}
-                            bg={form.category === item.value ? "$primary" : "$surfaceMuted"}
-                            color={form.category === item.value ? "white" : "$slate11"}
-                          onPress={() => setForm((current) => ({ ...current, category: item.value as TransactionCategory }))}
-                        >
-                          {item.label}
-                        </Button>
-                      ))}
-                  </XStack>
-                </ScrollView>
-              </YStack>
-
-              <YStack gap="$2">
-                <Text color="$mutedColor">Tipo</Text>
-                <XStack gap="$2" flexWrap="wrap">
-                  {types.filter((item) => item.value !== "all").map((item) => (
-                    <Button
-                      key={item.value}
-                      {...pillButtonProps}
-                      bg={form.type === item.value ? "$primary" : "$surfaceMuted"}
-                      color={form.type === item.value ? "white" : "$slate11"}
-                      onPress={() => setForm((current) => ({ ...current, type: item.value as TransactionType }))}
-                    >
-                      {item.label}
-                    </Button>
-                  ))}
-                </XStack>
-              </YStack>
-
-              <Button
-                {...primaryButtonProps}
-                bg="$primary"
-                color="white"
-                disabled={createTransaction.isPending || updateTransaction.isPending}
-                onPress={submitTransaction}
-              >
-                {editingTransaction
-                  ? updateTransaction.isPending
-                    ? "Actualizando..."
-                    : "Guardar cambios"
-                  : createTransaction.isPending
-                    ? "Guardando..."
-                    : "Registrar transacción"}
-              </Button>
-            </YStack>
-          </YStack>
-        </Card>
-
-        <Card
-          bg="$cardBackground"
-          borderColor="$borderColor"
-          borderWidth={1}
-          shadowColor="#0F172A"
-          shadowOpacity={0.06}
-          shadowRadius={16}
-          shadowOffset={{ width: 0, height: 8 }}
-          elevation={3}
-          p="$4"
-        >
-          <YStack gap="$4">
-            <Text fontSize="$6" fontWeight="800">
-              Historial de transacciones
-            </Text>
-
-            <Input
-              label="Buscar por descripción"
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Escribe para filtrar"
-            />
-
-            <YStack gap="$2">
-              <Text color="$mutedColor">Filtrar por categoría</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <XStack gap="$2">
-                  {categories.map((item) => (
-                    <Button
-                      key={item.value}
-                      {...pillButtonProps}
-                      bg={categoryFilter === item.value ? "$primary" : "$surfaceMuted"}
-                      color={categoryFilter === item.value ? "white" : "$slate11"}
-                      onPress={() => setCategoryFilter(item.value)}
-                    >
-                      {item.label}
-                    </Button>
-                  ))}
-                </XStack>
-              </ScrollView>
-            </YStack>
-
-            <XStack gap="$2" flexWrap="wrap">
-              {types.map((item) => (
-                <Button
-                  key={item.value}
-                  {...pillButtonProps}
-                  bg={typeFilter === item.value ? "$primary" : "$surfaceMuted"}
-                  color={typeFilter === item.value ? "white" : "$slate11"}
-                  onPress={() => setTypeFilter(item.value)}
-                >
-                  {item.label}
-                </Button>
-              ))}
-            </XStack>
-
-            {isTransactionsLoading ? (
-              <Card bg="$surfaceMuted" borderColor="$borderColor" borderWidth={1} p="$4" ai="center">
-                <LottieIllustration variant="loading" size={110} />
-                <Paragraph color="$mutedColor" mt="$2">
-                  Cargando tus movimientos financieros...
-                </Paragraph>
+              <Card bg="white" borderColor="#DDEBE7" borderWidth={1} shadowColor="#0F172A" shadowOpacity={0.04} shadowRadius={14} shadowOffset={{ width: 0, height: 8 }} elevation={2} p="$4" ai="center">
+                <YStack ai="center" jc="center" gap="$2">
+                  <YStack w={184} h={184} br={92} ai="center" jc="center" borderWidth={14} borderColor="#EAF6F2" borderTopColor="#004D99" borderRightColor="#004D99" borderBottomColor="#D7ECE7" borderLeftColor="#D7ECE7">
+                    <Text fontSize={40} fontWeight="900" color="#1C1B1B">
+                      {savingsRate}%
+                    </Text>
+                  </YStack>
+                  <YStack ai="center" gap="$1">
+                    <Text fontSize="$4" fontWeight="800" color="#004D99">
+                      Nivel de ahorro
+                    </Text>
+                    <Paragraph color="#5C667A" size="$2" textAlign="center">
+                      Tu saldo disponible frente a los ingresos registrados.
+                    </Paragraph>
+                  </YStack>
+                </YStack>
               </Card>
-            ) : null}
 
-            <YStack gap="$3">
-              {transactions.length > 0 ? (
-                transactions.map((item) => (
-                  <YStack key={item.id}>{renderTransaction({ item })}</YStack>
-                ))
-              ) : (
-                <Card bg="$soft" borderColor="$borderColor" borderWidth={1} p="$4">
-                  <Paragraph color="$mutedColor">
-                    No hay transacciones para los filtros actuales.
+              <XStack gap="$3" flexWrap="wrap">
+                <StatCard title="Ingresos" value={money(summary.income)} bg="#0F8E78" />
+                <StatCard title="Gastos" value={money(summary.expense)} bg="#0D5E55" />
+                <StatCard title="Balance" value={money(summary.balance)} bg="#F0B429" />
+              </XStack>
+            </YStack>
+          </Card>
+
+          <Card bg="$cardBackground" borderColor="$borderColor" borderWidth={1} shadowColor="#0F172A" shadowOpacity={0.08} shadowRadius={20} shadowOffset={{ width: 0, height: 10 }} elevation={4} p="$4">
+            <YStack gap="$4">
+              <XStack ai="center" jc="space-between">
+                <YStack>
+                  <Text fontSize="$6" fontWeight="900" color="$slate11">
+                    Actividad semanal
+                  </Text>
+                  <Paragraph color="$mutedColor" size="$2">
+                    Tus movimientos reales de la semana actual.
                   </Paragraph>
-                </Card>
-              )}
+                </YStack>
+              </XStack>
+
+              <XStack ai="flex-end" jc="space-between" h={118} px="$2">
+                {weeklyBars.map((bar) => (
+                  <YStack key={bar.label} ai="center" gap="$2" flex={1}>
+                    <YStack w={12} h={bar.height} br={9999} bg={bar.active ? "$primary" : "$borderColor"} />
+                    <Text fontSize={10} color="$mutedColor">
+                      {bar.label}
+                    </Text>
+                  </YStack>
+                ))}
+              </XStack>
             </YStack>
-          </YStack>
-        </Card>
+          </Card>
 
-        <Card
-          bg="$cardBackground"
-          borderColor="$borderColor"
-          borderWidth={1}
-          shadowColor="#0F172A"
-          shadowOpacity={0.06}
-          shadowRadius={16}
-          shadowOffset={{ width: 0, height: 8 }}
-          elevation={3}
-          p="$4"
-        >
-          <YStack gap="$4">
-            <Text fontSize="$6" fontWeight="800">
-              Perfil y seguridad
-            </Text>
+          <Card bg="$cardBackground" borderColor="$borderColor" borderWidth={1} shadowColor="#0F172A" shadowOpacity={0.08} shadowRadius={20} shadowOffset={{ width: 0, height: 10 }} elevation={4} p="$4">
+            <YStack gap="$4">
+              <XStack ai="center" jc="space-between">
+                <YStack>
+                  <Text fontSize="$6" fontWeight="900" color="$slate11">
+                    Transacciones recientes
+                  </Text>
+                  <Paragraph color="$mutedColor" size="$2">
+                    Vista previa de los últimos movimientos.
+                  </Paragraph>
+                </YStack>
+              </XStack>
 
-            <YStack gap="$3">
-              <Input
-                label="Nueva contraseña"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                placeholder="Mínimo 8 caracteres"
-              />
-
-              <Input
-                label="Confirmar contraseña"
-                value={passwordConfirm}
-                onChangeText={setPasswordConfirm}
-                secureTextEntry
-                placeholder="Repite la nueva contraseña"
-              />
-
-              <Button
-                {...primaryButtonProps}
-                bg="$secondary"
-                color="white"
-                disabled={changePassword.isPending}
-                onPress={submitPasswordChange}
-              >
-                {changePassword.isPending ? "Actualizando..." : "Cambiar contraseña"}
-              </Button>
-
-              <Button {...pillButtonProps} bg="$surfaceMuted" color="$slate11" onPress={() => signOut()}>
-                Cerrar sesión
-              </Button>
+              <YStack gap="$3">
+                {recentTransactions.length > 0 ? (
+                  recentTransactions.map((item) => {
+                    const isIncome = item.type === "income";
+                    return (
+                      <Pressable key={item.id} onPress={() => router.push("/history")}>
+                        <Card bg="rgba(255,255,255,0.88)" borderColor="#E5E2E1" borderWidth={1} shadowColor="#0F172A" shadowOpacity={0.04} shadowRadius={12} shadowOffset={{ width: 0, height: 6 }} elevation={2} px="$4" py="$4">
+                          <XStack ai="center" jc="space-between" gap="$3">
+                            <XStack ai="center" gap="$3" f={1}>
+                              <YStack w={48} h={48} br={16} bg={isIncome ? "#E8F4FF" : "#EAF7EA"} ai="center" jc="center">
+                                <MaterialCommunityIcons name={categoryIcons[item.category]} size={25} color={isIncome ? "#004D99" : "#1B6D24"} />
+                              </YStack>
+                              <YStack f={1} gap="$1">
+                                <Text fontSize={17} fontWeight="800" color="#1C1B1B" numberOfLines={1}>
+                                  {item.description.split(" - ")[0]}
+                                </Text>
+                                <Text color="#5C667A" fontSize={13}>
+                                  {formatDate(item.transaction_date)} · {categoryLabels[item.category]}
+                                </Text>
+                              </YStack>
+                            </XStack>
+                            <Text fontSize={18} fontWeight="900" color={isIncome ? "#1B6D24" : "#A10012"}>
+                              {isIncome ? "+" : "-"}{money(item.amount)}
+                            </Text>
+                          </XStack>
+                        </Card>
+                      </Pressable>
+                    );
+                  })
+                ) : (
+                  <Card bg="#F6F3F2" borderColor="#E5E2E1" borderWidth={1} px="$4" py="$5" ai="center">
+                    <LottieIllustration variant="loading" size={96} />
+                    <Paragraph mt="$2" color="#5C667A" textAlign="center">
+                      Aún no hay movimientos registrados.
+                    </Paragraph>
+                  </Card>
+                )}
+              </YStack>
             </YStack>
-          </YStack>
-        </Card>
+          </Card>
+
+          <Card bg="$cardBackground" borderColor="$borderColor" borderWidth={1} shadowColor="#0F172A" shadowOpacity={0.08} shadowRadius={20} shadowOffset={{ width: 0, height: 10 }} elevation={4} p="$4">
+            <YStack gap="$4">
+              <Text fontSize="$6" fontWeight="900" color="$slate11">
+                Acceso rápido
+              </Text>
+
+              <XStack gap="$3" flexWrap="wrap">
+                <Pressable onPress={() => router.push("/comprobantes")} style={{ flex: 1, minWidth: 160 }}>
+                  <Card bg="#004D99" px="$4" py="$4" br="$5">
+                    <Text color="white" fontSize={16} fontWeight="800">
+                      Comprobantes
+                    </Text>
+                  </Card>
+                </Pressable>
+
+                <Pressable onPress={() => router.push("/history")} style={{ flex: 1, minWidth: 160 }}>
+                  <Card bg="#1B6D24" px="$4" py="$4" br="$5">
+                    <Text color="white" fontSize={16} fontWeight="800">
+                      Historial
+                    </Text>
+                  </Card>
+                </Pressable>
+
+                <Pressable onPress={() => signOut()} style={{ flex: 1, minWidth: 160 }}>
+                  <Card bg="#F6FCF9" borderColor="#D6EAE2" borderWidth={1} px="$4" py="$4" br="$5">
+                    <Text color="#1C1B1B" fontSize={16} fontWeight="800">
+                      Cerrar sesión
+                    </Text>
+                  </Card>
+                </Pressable>
+              </XStack>
+            </YStack>
+          </Card>
+        </YStack>
       </ScrollView>
-    </KeyboardAvoidingView>
+
+      <Card position="absolute" left={18} right={18} bottom={18} bg="rgba(255,255,255,0.94)" borderColor="#D8E0EC" borderWidth={1} shadowColor="#0F172A" shadowOpacity={0.08} shadowRadius={18} shadowOffset={{ width: 0, height: 10 }} elevation={8} br={28} px="$4" py="$3">
+        <XStack ai="center" jc="space-between">
+          <Pressable onPress={() => router.replace("/home")}>
+            <YStack ai="center" gap="$1">
+              <YStack bg="#A3F69C" w={44} h={44} br={22} ai="center" jc="center">
+                <Ionicons name="home-outline" size={22} color="#1B6D24" />
+              </YStack>
+              <Text color="#1B6D24" fontSize={11} fontWeight="800">
+                Inicio
+              </Text>
+            </YStack>
+          </Pressable>
+
+          <Pressable onPress={() => router.push("/history")}>
+            <YStack ai="center" gap="$1">
+              <Ionicons name="time-outline" size={22} color="#727783" />
+              <Text color="#727783" fontSize={11} fontWeight="700">
+                Historial
+              </Text>
+            </YStack>
+          </Pressable>
+
+          <Pressable onPress={() => router.push("/comprobantes")}>
+            <YStack ai="center" gap="$1">
+              <Ionicons name="swap-horizontal-outline" size={22} color="#727783" />
+              <Text color="#727783" fontSize={11} fontWeight="700">
+                Transacción
+              </Text>
+            </YStack>
+          </Pressable>
+
+          <Pressable onPress={() => router.push("/profile-security")}>
+            <YStack ai="center" gap="$1">
+              <Ionicons name="person-outline" size={22} color="#727783" />
+              <Text color="#727783" fontSize={11} fontWeight="700">
+                Perfil
+              </Text>
+            </YStack>
+          </Pressable>
+        </XStack>
+      </Card>
+    </YStack>
   );
 };

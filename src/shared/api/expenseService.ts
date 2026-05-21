@@ -96,4 +96,18 @@ export const expenseService = {
     if (error) throw error;
     return data;
   },
+
+  async updateProfile(input: { email: string; fullName: string; phone: string; avatarUrl?: string | null }) {
+    const { data, error } = await supabase.auth.updateUser({
+      email: input.email.trim(),
+      data: {
+        full_name: input.fullName.trim(),
+        phone: input.phone.trim(),
+        avatar_url: input.avatarUrl ?? null,
+      },
+    });
+
+    if (error) throw error;
+    return data;
+  },
 };
